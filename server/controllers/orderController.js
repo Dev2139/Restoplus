@@ -103,6 +103,14 @@ exports.updateOrderStatus = async (req, res) => {
 
         if (order) {
             order.status = status;
+            
+            // If the main order is marked served, mark all sub-items as served too
+            if (status === 'Served') {
+                order.items.forEach(item => {
+                    item.status = 'Served';
+                });
+            }
+            
             await order.save(); // CRITICAL: Save the change to DB
 
             // Populate before returning and emitting to ensure dish names are sent
@@ -197,3 +205,31 @@ exports.updateItemStatus = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 };
+
+// @desc Mark all items in an order as served (Bulk action for merged items)
+// @route PUT /api/orders/:id/serve-all
+exports.serveAllItems = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        order.items.forEach(item => {
+            item.status = 'Served';
+        });
+
+        await order.save();
+        const updatedOrder = await Order.findById(order._id).populate('items.menuItem');
+
+        // Notify specific table and admin room
+        const io = socketHandler.getIO();
+        io.to(`table_${order.tableNumber}`).emit('status_update', updatedOrder);
+        io.to('admin_kitchen').emit('order_updated', updatedOrder);
+
+        res.json(updatedOrder);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+

@@ -78,8 +78,89 @@ const Dashboard = () => {
         }
     };
 
+    const handleServeAllItems = async (orderId) => {
+        try {
+            await api.put(`/orders/${orderId}/serve-all`, {}, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+        } catch (error) {
+            console.error('Error serving all items', error);
+        }
+    };
+
     const getStatusStyles = (status) => {
-// ... existing code ...
+        switch (status) {
+            case 'Pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+            case 'Accepted': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+            case 'Preparing': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+            case 'Ready': return 'bg-green-500/10 text-green-500 border-green-500/20';
+            case 'Served': return 'bg-primary/10 text-primary border-primary/20';
+            default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-black">
+            <Header isAdmin={true} />
+            <div className="flex">
+                <AdminSidebar />
+                <main className="flex-grow p-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h1 className="text-3xl font-black uppercase italic tracking-tighter">Kitchen <span className="text-primary not-italic">Dashboard</span></h1>
+                            <p className="text-gray-500 font-bold">Manage incoming orders in real-time</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-2 flex items-center gap-2">
+                                <AlertCircle size={18} className="text-primary animate-pulse" />
+                                <span className="text-sm font-bold">{orders.filter(o => o.status === 'Pending').length} Pending Orders</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="card h-64 animate-pulse"></div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <AnimatePresence>
+                                {orders.map((order) => (
+                                    <motion.div
+                                        key={order._id}
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className={`card flex flex-col ${order.status === 'Pending' ? 'border-primary/50 shadow-[0_0_20px_rgba(250,204,21,0.1)]' : ''}`}
+                                    >
+                                        <div className="p-4 border-b border-gray-800 flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="bg-primary text-black text-[10px] font-black px-2 py-0.5 rounded uppercase">Table {order.tableNumber}</span>
+                                                    <span className="text-gray-500 text-xs font-bold">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="font-black text-lg">Order #{order._id.slice(-6).toUpperCase()}</h3>
+                                                    {order.items.some(i => i.status === 'Pending') && (
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleServeAllItems(order._id);
+                                                            }}
+                                                            className="bg-primary/10 hover:bg-primary text-primary hover:text-black text-[8px] font-black px-2 py-1 rounded border border-primary/20 transition-all flex items-center gap-1"
+                                                        >
+                                                            <Check size={10} /> SERVE ALL NEW
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getStatusStyles(order.status)}`}>
+                                                {order.status}
+                                            </span>
+                                        </div>
+
                                         <div className="p-4 flex-grow space-y-3">
                                             {order.items.map((item, idx) => (
                                                 <div key={idx} className="flex justify-between items-center gap-4 bg-gray-900/40 p-2 rounded-xl border border-gray-800/50">
