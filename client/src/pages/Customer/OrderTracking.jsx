@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
-import { CheckCircle2, Clock, Utensils, CheckCircle, ArrowRight, Table } from 'lucide-react';
+import { CheckCircle2, Clock, Utensils, CheckCircle, ArrowRight, Table, AlertCircle } from 'lucide-react';
 import Header from '../../components/Header';
 import { useSocket } from '../../context/SocketContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,62 +9,71 @@ import { motion, AnimatePresence } from 'framer-motion';
 const OrderTracking = () => {
     const { orderId } = useParams();
     const { socket, joinTable } = useSocket();
+    
+    // Core State
+    const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [activeOrders, setActiveOrders] = useState([]);
     const [showFinalBill, setShowFinalBill] = useState(false);
 
+    const statusSteps = [
+        { status: 'Pending', label: 'Order Placed', icon: Clock },
+        { status: 'Accepted', label: 'Accepted', icon: CheckCircle2 },
+        { status: 'Preparing', label: 'Preparing', icon: Utensils },
+        { status: 'Ready', label: 'Ready to Serve', icon: CheckCircle },
+        { status: 'Served', label: 'Served', icon: CheckCircle },
+    ];
+
+    // 1. Initial Data Fetch
     useEffect(() => {
-        fetchOrder();
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                const { data } = await api.get(`/orders/${orderId}`);
+                setOrder(data);
+                joinTable(data.tableNumber);
+                await fetchActiveOrders(data.tableNumber);
+            } catch (error) {
+                console.error('Error loading tracking data', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadInitialData();
     }, [orderId]);
 
+    // 2. Socket Listeners
     useEffect(() => {
-        if (socket) {
-            socket.on('status_update', (updatedOrder) => {
+        if (socket && order?.tableNumber) {
+            const handleUpdate = (updatedOrder) => {
+                // If this is our current tracking order, update status
                 if (updatedOrder._id === orderId) {
                     setOrder(updatedOrder);
                 }
-                // Refresh session total on any status update for this table
-                if (order && updatedOrder.tableNumber === order.tableNumber) {
-                    fetchActiveOrders(updatedOrder.tableNumber);
-                }
-            });
-            
-            socket.on('new_order', (newOrder) => {
-                // If a new order is placed for the same table, refresh the bill
-                if (order && newOrder.tableNumber === order.tableNumber) {
+                // Refresh full table session if the update is for our table
+                if (updatedOrder.tableNumber === order.tableNumber) {
                     fetchActiveOrders(order.tableNumber);
                 }
-            });
+            };
 
-            socket.on('order_updated', (updatedOrder) => {
-                // If our order was updated (items merged), refresh the view
-                if (updatedOrder._id === orderId) {
-                    setOrder(updatedOrder);
+            const handleNewOrder = (newOrder) => {
+                if (newOrder.tableNumber === order.tableNumber) {
+                    fetchActiveOrders(order.tableNumber);
                 }
-                if (order && updatedOrder.tableNumber === order.tableNumber) {
-                    fetchActiveOrders(updatedOrder.tableNumber);
-                }
-            });
-            
-            // Clean up listeners
+            };
+
+            socket.on('status_update', handleUpdate);
+            socket.on('order_updated', handleUpdate);
+            socket.on('new_order', handleNewOrder);
+
             return () => {
-                socket.off('status_update');
-                socket.off('new_order');
-                socket.off('order_updated');
+                socket.off('status_update', handleUpdate);
+                socket.off('order_updated', handleUpdate);
+                socket.off('new_order', handleNewOrder);
             };
         }
     }, [socket, orderId, order?.tableNumber]);
-
-    const fetchOrder = async () => {
-        try {
-            const { data } = await api.get(`/orders/${orderId}`);
-            setOrder(data);
-            joinTable(data.tableNumber);
-            fetchActiveOrders(data.tableNumber);
-        } catch (error) {
-            console.error('Error fetching order', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchActiveOrders = async (tableNum) => {
         try {
@@ -122,7 +131,7 @@ const OrderTracking = () => {
                     </div>
                 </div>
 
-                {/* Status Tracker (For current order) */}
+                {/* Status Tracker */}
                 <div className="space-y-8 relative mb-12 before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-[2px] before:bg-gray-800">
                     {statusSteps.map((step, index) => {
                         const isCompleted = index <= currentStatusIndex;
