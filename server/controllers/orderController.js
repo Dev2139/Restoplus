@@ -12,10 +12,10 @@ exports.createOrder = async (req, res) => {
             return;
         }
 
-        // Check for existing active order for this table (not served or cancelled)
+        // Check for existing active order for this table (excluding served/cancelled/completed)
         let order = await Order.findOne({ 
             tableNumber, 
-            status: { $nin: ['Served', 'Cancelled'] } 
+            status: { $nin: ['Served', 'Cancelled', 'Completed'] } 
         });
 
         if (order) {
@@ -123,6 +123,26 @@ exports.getActiveOrdersByTable = async (req, res) => {
         }).populate('items.menuItem');
         
         res.json(orders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc Finalize session for a table
+// @route PUT /api/orders/table/:tableNumber/complete
+exports.completeTableSession = async (req, res) => {
+    try {
+        const { tableNumber } = req.params;
+        await Order.updateMany(
+            { tableNumber, status: { $ne: 'Cancelled' } },
+            { status: 'Completed' }
+        );
+        
+        // Notify tracking pages that the session is done
+        const io = socketHandler.getIO();
+        io.to(`table_${tableNumber}`).emit('session_completed');
+        
+        res.json({ message: 'Session completed successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

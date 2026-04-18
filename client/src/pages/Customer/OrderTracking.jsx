@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { CheckCircle2, Clock, Utensils, CheckCircle, ArrowRight, Table, AlertCircle } from 'lucide-react';
 import Header from '../../components/Header';
@@ -23,6 +23,8 @@ const OrderTracking = () => {
         { status: 'Ready', label: 'Ready to Serve', icon: CheckCircle },
         { status: 'Served', label: 'Served', icon: CheckCircle },
     ];
+
+    const navigate = useNavigate();
 
     // 1. Initial Data Fetch
     useEffect(() => {
@@ -63,14 +65,20 @@ const OrderTracking = () => {
                 }
             };
 
+            const handleSessionCompleted = () => {
+                navigate('/thank-you');
+            };
+
             socket.on('status_update', handleUpdate);
             socket.on('order_updated', handleUpdate);
             socket.on('new_order', handleNewOrder);
+            socket.on('session_completed', handleSessionCompleted);
 
             return () => {
                 socket.off('status_update', handleUpdate);
                 socket.off('order_updated', handleUpdate);
                 socket.off('new_order', handleNewOrder);
+                socket.off('session_completed', handleSessionCompleted);
             };
         }
     }, [socket, orderId, order?.tableNumber]);
@@ -78,9 +86,26 @@ const OrderTracking = () => {
     const fetchActiveOrders = async (tableNum) => {
         try {
             const { data } = await api.get(`/orders/table/${tableNum}/active`);
-            setActiveOrders(data);
+            // Only show orders that are not Completed
+            const pendingOrders = data.filter(o => o.status !== 'Completed');
+            setActiveOrders(pendingOrders);
+            
+            // If all orders for this session are completed, we might want to redirect
+            if (data.length > 0 && pendingOrders.length === 0) {
+                navigate('/thank-you');
+            }
         } catch (error) {
             console.error('Error fetching active orders', error);
+        }
+    };
+
+    const handleCheckout = async () => {
+        try {
+            await api.put(`/orders/table/${order.tableNumber}/complete`);
+            navigate('/thank-you');
+        } catch (error) {
+            console.error('Error during checkout', error);
+            alert('Failed to complete session. Please try again.');
         }
     };
 
@@ -282,14 +307,22 @@ const OrderTracking = () => {
                                 </div>
                             </div>
 
-                            <button 
-                                onClick={() => setShowFinalBill(false)}
-                                className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase tracking-widest text-sm hover:bg-gray-900 transition-all"
-                            >
-                                Close Summary
-                            </button>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                    onClick={() => setShowFinalBill(false)}
+                                    className="py-4 border-2 border-gray-200 text-gray-500 font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-gray-50 transition-all"
+                                >
+                                    BACK TO TRACKER
+                                </button>
+                                <button 
+                                    onClick={handleCheckout}
+                                    className="py-4 bg-black text-white font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-gray-900 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <CheckCircle size={14} className="text-primary" /> FINISH JOURNEY
+                                </button>
+                            </div>
                             
-                            <p className="text-center text-[8px] font-black text-gray-400 uppercase tracking-widest mt-6">Please show this summary to the table manager for payment</p>
+                            <p className="text-center text-[8px] font-black text-gray-400 uppercase tracking-widest mt-6">Confirm payment manually before clicking Finish Journey</p>
                         </motion.div>
                     </motion.div>
                 )}
