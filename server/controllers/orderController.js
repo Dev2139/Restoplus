@@ -69,7 +69,8 @@ exports.updateOrderStatus = async (req, res) => {
 
         if (order) {
             order.status = status;
-            const updatedOrder = await order.save();
+            // Populate before returning and emitting
+            const updatedOrder = await Order.findById(order._id).populate('items.menuItem');
 
             // Notify specific table and admin room
             const io = socketHandler.getIO();
@@ -80,7 +81,21 @@ exports.updateOrderStatus = async (req, res) => {
         } else {
             res.status(404).json({ message: 'Order not found' });
         }
+    }
+};
+
+// @desc Get all active orders for a specific table (Session Total)
+// @route GET /api/orders/table/:tableNumber/active
+exports.getActiveOrdersByTable = async (req, res) => {
+    try {
+        const { tableNumber } = req.params;
+        const orders = await Order.find({ 
+            tableNumber, 
+            status: { $nin: ['Served', 'Cancelled'] } 
+        }).populate('items.menuItem');
+        
+        res.json(orders);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
 };

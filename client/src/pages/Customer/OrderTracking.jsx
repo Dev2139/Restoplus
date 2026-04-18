@@ -9,16 +9,7 @@ import { motion } from 'framer-motion';
 const OrderTracking = () => {
     const { orderId } = useParams();
     const { socket, joinTable } = useSocket();
-    const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    const statusSteps = [
-        { status: 'Pending', label: 'Order Placed', icon: Clock, color: 'text-yellow-500' },
-        { status: 'Accepted', label: 'Accepted', icon: CheckCircle2, color: 'text-blue-500' },
-        { status: 'Preparing', label: 'Preparing', icon: Utensils, color: 'text-orange-500' },
-        { status: 'Ready', label: 'Ready to Serve', icon: CheckCircle, color: 'text-green-500' },
-        { status: 'Served', label: 'Served', icon: CheckCircle, color: 'text-primary' },
-    ];
+    const [activeOrders, setActiveOrders] = useState([]);
 
     useEffect(() => {
         fetchOrder();
@@ -28,19 +19,32 @@ const OrderTracking = () => {
                 if (updatedOrder._id === orderId) {
                     setOrder(updatedOrder);
                 }
+                // Refresh session total on any status update
+                fetchActiveOrders(updatedOrder.tableNumber);
+            });
+            
+            socket.on('new_order', (newOrder) => {
+                // If a new order is placed for the same table, refresh the list
+                if (order && newOrder.tableNumber === order.tableNumber) {
+                    fetchActiveOrders(order.tableNumber);
+                }
             });
         }
 
         return () => {
-            if (socket) socket.off('status_update');
+            if (socket) {
+                socket.off('status_update');
+                socket.off('new_order');
+            }
         };
-    }, [orderId, socket]);
+    }, [orderId, socket, order?.tableNumber]);
 
     const fetchOrder = async () => {
         try {
             const { data } = await api.get(`/orders/${orderId}`);
             setOrder(data);
             joinTable(data.tableNumber);
+            fetchActiveOrders(data.tableNumber);
         } catch (error) {
             console.error('Error fetching order', error);
         } finally {
@@ -48,8 +52,23 @@ const OrderTracking = () => {
         }
     };
 
+    const fetchActiveOrders = async (tableNum) => {
+        try {
+            const { data } = await api.get(`/orders/table/${tableNum}/active`);
+            setActiveOrders(data);
+        } catch (error) {
+            console.error('Error fetching active orders', error);
+        }
+    };
+
     const getStatusIndex = (status) => {
         return statusSteps.findIndex(step => step.status === status);
+    };
+
+    const calculateSessionTotal = () => {
+        const subtotal = activeOrders.reduce((sum, ord) => sum + (ord.totalAmount || 0), 0);
+        const gst = Math.round(subtotal * 0.05);
+        return { subtotal, gst, grandTotal: subtotal + gst };
     };
 
     if (loading) {
@@ -73,6 +92,8 @@ const OrderTracking = () => {
     }
 
     const currentStatusIndex = getStatusIndex(order.status);
+    const sessionBill = calculateSessionTotal();
+    const allItems = activeOrders.flatMap(ord => ord.items);
 
     return (
         <div className="min-h-screen bg-black">
@@ -81,15 +102,15 @@ const OrderTracking = () => {
             <div className="px-4 py-8 max-w-2xl mx-auto">
                 <div className="text-center mb-10">
                     <h1 className="text-3xl font-black mb-2 uppercase tracking-tighter italic">Tracking Your <span className="text-primary font-bold">FEAST</span></h1>
-                    <p className="text-gray-400">Order ID: #{order._id.slice(-6).toUpperCase()}</p>
+                    <p className="text-gray-400">Current Order: #{order._id.slice(-6).toUpperCase()}</p>
                     <div className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2 rounded-full mt-4 border border-gray-800">
                         <Table size={16} className="text-primary" />
                         <span className="font-bold text-sm">Table Number: {order.tableNumber}</span>
                     </div>
                 </div>
 
-                {/* Status Tracker */}
-                <div className="space-y-8 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-[2px] before:bg-gray-800">
+                {/* Status Tracker (For current order) */}
+                <div className="space-y-8 relative mb-12 before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-[2px] before:bg-gray-800">
                     {statusSteps.map((step, index) => {
                         const isCompleted = index <= currentStatusIndex;
                         const isCurrent = index === currentStatusIndex;
@@ -124,20 +145,50 @@ const OrderTracking = () => {
                     })}
                 </div>
 
-                {/* Order Summary Card */}
-                <div className="mt-12 bg-gray-900/50 border border-gray-800 rounded-3xl p-6">
-                    <h3 className="text-xl font-bold mb-4">Items Summary</h3>
-                    <div className="space-y-3">
-                        {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between text-gray-400">
-                                <span>{item.quantity}x {item.menuItem?.name}</span>
-                                <span className="text-white font-medium">₹{item.menuItem?.price * item.quantity}</span>
+                {/* Session Bill Summary */}
+                <div className="bg-gray-900/50 border-2 border-primary/20 rounded-3xl p-6 shadow-2xl shadow-primary/5">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-black uppercase italic">Session <span className="text-primary not-italic">Summary</span></h3>
+                        <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded border border-primary/20 uppercase">
+                            {activeOrders.length} {activeOrders.length === 1 ? 'Order' : 'Orders'} Total
+                        </span>
+                    </div>
+
+                    <div className="space-y-4">
+                        {activeOrders.map((ord) => (
+                            <div key={ord._id} className="space-y-2 pb-4 border-b border-gray-800 last:border-0 last:pb-0">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase">Order #{ord._id.slice(-4).toUpperCase()}</span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ord.status === 'Ready' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                                        {ord.status}
+                                    </span>
+                                </div>
+                                {ord.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span className="text-gray-300">
+                                            <span className="text-primary font-bold mr-2">{item.quantity}x</span>
+                                            {item.menuItem?.name || 'Loading item...'}
+                                        </span>
+                                        <span className="font-bold text-white">₹{(item.menuItem?.price || 0) * item.quantity}</span>
+                                    </div>
+                                ))}
                             </div>
                         ))}
-                        <div className="h-[1px] bg-gray-800 my-4"></div>
-                        <div className="flex justify-between text-xl font-bold">
-                            <span>Total Amount</span>
-                            <span className="text-primary">₹{order.totalAmount}</span>
+
+                        <div className="pt-4 space-y-2">
+                            <div className="flex justify-between text-gray-400 text-sm">
+                                <span>Subtotal</span>
+                                <span>₹{sessionBill.subtotal}</span>
+                            </div>
+                            <div className="flex justify-between text-gray-400 text-sm">
+                                <span>GST (5%)</span>
+                                <span>₹{sessionBill.gst}</span>
+                            </div>
+                            <div className="h-[1px] bg-gray-800 my-2"></div>
+                            <div className="flex justify-between text-2xl font-black italic tracking-tighter">
+                                <span>SESSİON TOTAL</span>
+                                <span className="text-primary not-italic">₹{sessionBill.grandTotal}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
