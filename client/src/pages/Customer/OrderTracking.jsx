@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { CheckCircle2, Clock, Utensils, CheckCircle, ArrowRight, Table } from 'lucide-react';
 import Header from '../../components/Header';
 import { useSocket } from '../../context/SocketContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const OrderTracking = () => {
     const { orderId } = useParams();
