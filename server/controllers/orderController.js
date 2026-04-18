@@ -12,7 +12,31 @@ exports.createOrder = async (req, res) => {
             return;
         }
 
-        const order = new Order({
+        // Check for existing active order for this table (not served or cancelled)
+        let order = await Order.findOne({ 
+            tableNumber, 
+            status: { $nin: ['Served', 'Cancelled'] } 
+        });
+
+        if (order) {
+            // MERGE: Add items to existing order
+            order.items.push(...items);
+            order.totalAmount += totalAmount;
+            if (notes) order.notes = order.notes ? `${order.notes} | New: ${notes}` : notes;
+            
+            await order.save();
+            const populatedOrder = await Order.findById(order._id).populate('items.menuItem');
+            
+            // Notify kitchen of update
+            const io = socketHandler.getIO();
+            io.to('admin_kitchen').emit('order_updated', populatedOrder);
+            io.to(`table_${tableNumber}`).emit('status_update', populatedOrder);
+
+            return res.status(200).json(populatedOrder);
+        }
+
+        // NEW ORDER: Create if none active
+        order = new Order({
             tableNumber,
             items,
             totalAmount,
@@ -95,7 +119,7 @@ exports.getActiveOrdersByTable = async (req, res) => {
         const { tableNumber } = req.params;
         const orders = await Order.find({ 
             tableNumber, 
-            status: { $nin: ['Served', 'Cancelled'] } 
+            status: { $nin: ['Cancelled'] } // Include Served orders for the final bill
         }).populate('items.menuItem');
         
         res.json(orders);

@@ -9,17 +9,7 @@ import { motion } from 'framer-motion';
 const OrderTracking = () => {
     const { orderId } = useParams();
     const { socket, joinTable } = useSocket();
-    const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [activeOrders, setActiveOrders] = useState([]);
-
-    const statusSteps = [
-        { status: 'Pending', label: 'Order Placed', icon: Clock, color: 'text-yellow-500' },
-        { status: 'Accepted', label: 'Accepted', icon: CheckCircle2, color: 'text-blue-500' },
-        { status: 'Preparing', label: 'Preparing', icon: Utensils, color: 'text-orange-500' },
-        { status: 'Ready', label: 'Ready to Serve', icon: CheckCircle, color: 'text-green-500' },
-        { status: 'Served', label: 'Served', icon: CheckCircle, color: 'text-primary' },
-    ];
+    const [showFinalBill, setShowFinalBill] = useState(false);
 
     useEffect(() => {
         fetchOrder();
@@ -43,11 +33,22 @@ const OrderTracking = () => {
                     fetchActiveOrders(order.tableNumber);
                 }
             });
+
+            socket.on('order_updated', (updatedOrder) => {
+                // If our order was updated (items merged), refresh the view
+                if (updatedOrder._id === orderId) {
+                    setOrder(updatedOrder);
+                }
+                if (order && updatedOrder.tableNumber === order.tableNumber) {
+                    fetchActiveOrders(updatedOrder.tableNumber);
+                }
+            });
             
             // Clean up listeners
             return () => {
                 socket.off('status_update');
                 socket.off('new_order');
+                socket.off('order_updated');
             };
         }
     }, [socket, orderId, order?.tableNumber]);
@@ -106,17 +107,16 @@ const OrderTracking = () => {
 
     const currentStatusIndex = getStatusIndex(order.status);
     const sessionBill = calculateSessionTotal();
-    const allItems = activeOrders.flatMap(ord => ord.items);
 
     return (
-        <div className="min-h-screen bg-black">
+        <div className="min-h-screen bg-black relative">
             <Header />
             
             <div className="px-4 py-8 max-w-2xl mx-auto">
                 <div className="text-center mb-10">
                     <h1 className="text-3xl font-black mb-2 uppercase tracking-tighter italic">Tracking Your <span className="text-primary font-bold">FEAST</span></h1>
-                    <p className="text-gray-400">Current Order: #{order._id.slice(-6).toUpperCase()}</p>
-                    <div className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2 rounded-full mt-4 border border-gray-800">
+                    <p className="text-gray-400">Order Ref: #{orderId.slice(-6).toUpperCase()}</p>
+                    <div className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2 rounded-full mt-4 border border-gray-800 shadow-xl shadow-primary/5">
                         <Table size={16} className="text-primary" />
                         <span className="font-bold text-sm">Table Number: {order.tableNumber}</span>
                     </div>
@@ -136,7 +136,7 @@ const OrderTracking = () => {
                                 transition={{ delay: index * 0.1 }}
                                 className="flex items-start gap-6 relative"
                             >
-                                <div className={`z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${isCompleted ? 'bg-primary border-primary' : 'bg-black border-gray-800'}`}>
+                                <div className={`z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${isCompleted ? 'bg-primary border-primary shadow-lg shadow-primary/20' : 'bg-black border-gray-800'}`}>
                                     <step.icon size={20} className={isCompleted ? 'text-black' : 'text-gray-600'} />
                                     {isCurrent && (
                                         <div className="absolute inset-0 bg-primary/30 rounded-full animate-ping"></div>
@@ -148,7 +148,7 @@ const OrderTracking = () => {
                                         {step.label}
                                     </h3>
                                     {isCurrent && (
-                                        <p className="text-primary text-sm font-bold mt-1">
+                                        <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
                                             Currently in this stage
                                         </p>
                                     )}
@@ -159,71 +159,132 @@ const OrderTracking = () => {
                 </div>
 
                 {/* Session Bill Summary */}
-                <div className="bg-gray-900/50 border-2 border-primary/20 rounded-3xl p-6 shadow-2xl shadow-primary/5">
+                <div className="bg-gray-900/50 border-2 border-primary/20 rounded-3xl p-6 shadow-2xl shadow-primary/5 mb-8">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-black uppercase italic">Session <span className="text-primary not-italic">Summary</span></h3>
+                        <h3 className="text-xl font-black uppercase italic">Live <span className="text-primary not-italic">Bill</span></h3>
                         <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded border border-primary/20 uppercase">
-                            {activeOrders.length} {activeOrders.length === 1 ? 'Order' : 'Orders'} Total
+                            Session Total
                         </span>
                     </div>
 
                     <div className="space-y-4">
-                        {activeOrders.map((ord) => (
-                            <div key={ord._id} className="space-y-2 pb-4 border-b border-gray-800 last:border-0 last:pb-0">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-500 uppercase">Order #{ord._id.slice(-4).toUpperCase()}</span>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ord.status === 'Ready' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-                                        {ord.status}
+                        <div className="space-y-2 pb-4 border-b border-gray-800">
+                            {activeOrders.flatMap(ord => ord.items).map((item, idx) => (
+                                <div key={idx} className="flex justify-between text-sm">
+                                    <span className="text-gray-300">
+                                        <span className="text-primary font-bold mr-2 text-xs">x{item.quantity}</span>
+                                        {item.menuItem?.name || 'Loading item...'}
                                     </span>
+                                    <span className="font-bold text-white">₹{(item.menuItem?.price || 0) * item.quantity}</span>
                                 </div>
-                                {ord.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-sm">
-                                        <span className="text-gray-300">
-                                            <span className="text-primary font-bold mr-2">{item.quantity}x</span>
-                                            {item.menuItem?.name || 'Loading item...'}
-                                        </span>
-                                        <span className="font-bold text-white">₹{(item.menuItem?.price || 0) * item.quantity}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
+                            ))}
+                        </div>
 
-                        <div className="pt-4 space-y-2">
-                            <div className="flex justify-between text-gray-400 text-sm">
+                        <div className="pt-2 space-y-2">
+                            <div className="flex justify-between text-gray-400 text-xs">
                                 <span>Subtotal</span>
                                 <span>₹{sessionBill.subtotal}</span>
                             </div>
-                            <div className="flex justify-between text-gray-400 text-sm">
-                                <span>GST (5%)</span>
+                            <div className="flex justify-between text-gray-400 text-xs">
+                                <span>Tax (GST 5%)</span>
                                 <span>₹{sessionBill.gst}</span>
                             </div>
                             <div className="h-[1px] bg-gray-800 my-2"></div>
                             <div className="flex justify-between text-2xl font-black italic tracking-tighter">
-                                <span>SESSİON TOTAL</span>
-                                <span className="text-primary not-italic">₹{sessionBill.grandTotal}</span>
+                                <span>TOTAL BILL</span>
+                                <span className="text-primary not-italic animate-pulse">₹{sessionBill.grandTotal}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-8 flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
                     {order.status === 'Served' ? (
-                        <Link to="/thank-you">
-                            <button className="btn-primary w-full flex items-center justify-center gap-2">
-                                Complete Experience <ArrowRight size={20} />
-                            </button>
-                        </Link>
+                        <button 
+                            onClick={() => setShowFinalBill(true)}
+                            className="w-full py-4 bg-primary text-black font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-yellow-500 transition-all shadow-xl shadow-primary/10"
+                        >
+                            <CheckCircle size={20} /> GENERATE FINAL SUMMARY
+                        </button>
                     ) : (
-                        <p className="text-gray-500 italic text-center mb-4">Sit back and relax, your food is on the way!</p>
+                        <p className="text-gray-500 italic text-[10px] uppercase font-bold tracking-widest text-center mb-4">Cooking with love. Please wait...</p>
                     )}
                     
                     <Link to={`/table/${order.tableNumber}`}>
-                        <button className="w-full py-4 border-2 border-primary/30 text-primary font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/5 transition-all">
-                            <Utensils size={20} /> ORDER MORE ITEMS
+                        <button className="w-full py-4 border-2 border-gray-800 text-gray-400 font-bold rounded-2xl flex items-center justify-center gap-2 hover:border-primary/50 hover:text-primary transition-all">
+                            <Utensils size={20} /> ADD MORE ITEMS
                         </button>
                     </Link>
                 </div>
             </div>
+
+            {/* Final Bill Modal */}
+            <AnimatePresence>
+                {showFinalBill && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bg-white text-black w-full max-w-md rounded-[40px] p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden relative"
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-2 bg-primary"></div>
+                            
+                            <div className="text-center mb-8">
+                                <h2 className="text-3xl font-black italic uppercase tracking-tighter leading-none mb-1">Resto<span className="text-primary italic">Plus</span></h2>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Table Payment Summary</p>
+                            </div>
+
+                            <div className="space-y-4 mb-8">
+                                <div className="flex justify-between text-xs font-black border-b-2 border-gray-100 pb-2">
+                                    <span>ITEM</span>
+                                    <span>PRICE</span>
+                                </div>
+                                <div className="max-h-[30vh] overflow-y-auto space-y-3 pr-2 scrollbar-hide">
+                                    {activeOrders.flatMap(ord => ord.items).map((item, idx) => (
+                                        <div key={idx} className="flex justify-between text-sm">
+                                            <span className="font-bold text-gray-700">
+                                                <span className="text-primary mr-2">{item.quantity}x</span>
+                                                {item.menuItem?.name || 'Dish'}
+                                            </span>
+                                            <span className="font-black">₹{(item.menuItem?.price || 0) * item.quantity}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 rounded-3xl p-6 space-y-2 mb-8 border border-gray-100">
+                                <div className="flex justify-between text-sm font-bold text-gray-500">
+                                    <span>Subtotal</span>
+                                    <span>₹{sessionBill.subtotal}</span>
+                                </div>
+                                <div className="flex justify-between text-sm font-bold text-gray-500">
+                                    <span>GST (5%)</span>
+                                    <span>₹{sessionBill.gst}</span>
+                                </div>
+                                <div className="h-[2px] bg-gray-200 my-2"></div>
+                                <div className="flex justify-between text-3xl font-black italic tracking-tighter">
+                                    <span>GRAND TOTAL</span>
+                                    <span className="text-primary not-italic">₹{sessionBill.grandTotal}</span>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={() => setShowFinalBill(false)}
+                                className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase tracking-widest text-sm hover:bg-gray-900 transition-all"
+                            >
+                                Close Summary
+                            </button>
+                            
+                            <p className="text-center text-[8px] font-black text-gray-400 uppercase tracking-widest mt-6">Please show this summary to the table manager for payment</p>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

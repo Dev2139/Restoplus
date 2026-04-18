@@ -29,6 +29,9 @@ const Dashboard = () => {
 
             socket.on('order_updated', (updatedOrder) => {
                 setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
+                // Play notification sound on update too (important for merged items)
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+                audio.play().catch(e => console.log('Audio play failed'));
             });
         }
 
