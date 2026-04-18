@@ -5,17 +5,26 @@ const socketHandler = require('../socket/socketHandler');
 // @route POST /api/orders
 exports.createOrder = async (req, res) => {
     try {
-        const { tableNumber, items, totalAmount, notes } = req.body;
+        const { tableNumber, items, totalAmount, notes, sessionId } = req.body;
 
         if (!items || items.length === 0) {
             res.status(400).json({ message: 'No order items' });
             return;
         }
 
-        // Check for existing active order for this table (excluding served/cancelled/completed)
+        // --- SESSION SECURITY CHECK ---
+        const Table = require('../models/Table');
+        const table = await Table.findOne({ tableNumber });
+        if (!table || table.currentSessionId !== sessionId) {
+            return res.status(403).json({ message: 'Invalid or expired session. Please re-scan QR code.' });
+        }
+
+        // Check for existing active order for this session (excluding cancelled/completed)
+        // CRITICAL: We now include 'Served' to prevent duplicate order documents
         let order = await Order.findOne({ 
-            tableNumber, 
-            status: { $nin: ['Served', 'Cancelled', 'Completed'] } 
+            tableNumber,
+            sessionId,
+            status: { $nin: ['Cancelled', 'Completed'] } 
         });
 
         if (order) {
@@ -40,7 +49,8 @@ exports.createOrder = async (req, res) => {
             tableNumber,
             items,
             totalAmount,
-            notes
+            notes,
+            sessionId // Track which session placed this
         });
 
         const createdOrder = await order.save();
@@ -138,6 +148,13 @@ exports.completeTableSession = async (req, res) => {
             { status: 'Completed' }
         );
         
+        // Clear current session on the table
+        const Table = require('../models/Table');
+        await Table.findOneAndUpdate(
+            { tableNumber },
+            { currentSessionId: null }
+        );
+
         // Notify tracking pages that the session is done
         const io = socketHandler.getIO();
         io.to(`table_${tableNumber}`).emit('session_completed');

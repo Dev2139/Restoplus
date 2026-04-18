@@ -5,6 +5,7 @@ const CartContext = createContext();
 export const CartProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState([]);
     const [tableNumber, setTableNumber] = useState(null);
+    const [sessionId, setSessionId] = useState(localStorage.getItem('restoplus_session_id'));
 
     const addToCart = (item, quantity = 1, notes = '') => {
         setCartItems(prev => {
@@ -29,6 +30,15 @@ export const CartProvider = ({ children }) => {
         setCartItems([]);
     };
 
+    const saveSession = (id) => {
+        setSessionId(id);
+        if (id) {
+            localStorage.setItem('restoplus_session_id', id);
+        } else {
+            localStorage.removeItem('restoplus_session_id');
+        }
+    };
+
     const cartTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -42,7 +52,9 @@ export const CartProvider = ({ children }) => {
             cartTotal, 
             cartCount,
             tableNumber,
-            setTableNumber
+            setTableNumber,
+            sessionId,
+            setSessionId: saveSession
         }}>
             {children}
         </CartContext.Provider>

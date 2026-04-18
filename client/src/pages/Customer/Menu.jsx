@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Menu = () => {
     const { tableNumber: tableParam } = useParams();
-    const { setTableNumber, addToCart, removeFromCart, updateQuantity, cartItems, cartTotal, cartCount } = useCart();
+    const { setTableNumber, addToCart, removeFromCart, updateQuantity, cartItems, cartTotal, cartCount, setSessionId } = useCart();
     const [menuItems, setMenuItems] = useState([]);
     const [filteredItems, setFilteredItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -20,9 +20,21 @@ const Menu = () => {
     const categories = ['All', ...new Set(menuItems.map(item => item.category))];
 
     useEffect(() => {
-        setTableNumber(tableParam);
+        if (tableParam) {
+            setTableNumber(tableParam);
+            fetchSession(tableParam);
+        }
         fetchMenu();
     }, [tableParam]);
+
+    const fetchSession = async (tableNum) => {
+        try {
+            const { data } = await api.get(`/tables/${tableNum}/session`);
+            setSessionId(data.sessionId);
+        } catch (error) {
+            console.error('Error fetching table session', error);
+        }
+    };
 
     useEffect(() => {
         let result = menuItems;

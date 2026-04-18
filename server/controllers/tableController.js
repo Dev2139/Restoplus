@@ -54,3 +54,30 @@ exports.deleteTable = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc Get or Initiate a table session
+// @route GET /api/tables/:tableNumber/session
+exports.getTableSession = async (req, res) => {
+    try {
+        const { tableNumber } = req.params;
+        let table = await Table.findOne({ tableNumber });
+        
+        if (!table) {
+            // Just in case, create the table if it doesn't exist yet but was scanned
+            table = new Table({ tableNumber });
+        }
+
+        if (!table.currentSessionId) {
+            // Initiate a new session if table is free
+            table.currentSessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            await table.save();
+        }
+
+        res.json({ 
+            tableNumber: table.tableNumber, 
+            sessionId: table.currentSessionId 
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

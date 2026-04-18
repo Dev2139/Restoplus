@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const { cartItems, cartTotal, removeFromCart, updateQuantity, tableNumber, clearCart } = useCart();
+    const { cartItems, cartTotal, removeFromCart, updateQuantity, tableNumber, clearCart, sessionId } = useCart();
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -19,6 +19,7 @@ const Cart = () => {
         try {
             const orderData = {
                 tableNumber,
+                sessionId, // SECURE SESSION ID
                 items: cartItems.map(item => ({
                     menuItem: item._id,
                     quantity: item.quantity,

@@ -4,11 +4,13 @@ import api from '../../services/api';
 import { CheckCircle2, Clock, Utensils, CheckCircle, ArrowRight, Table, AlertCircle } from 'lucide-react';
 import Header from '../../components/Header';
 import { useSocket } from '../../context/SocketContext';
+import { useCart } from '../../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const OrderTracking = () => {
     const { orderId } = useParams();
     const { socket, joinTable } = useSocket();
+    const { setSessionId } = useCart();
     
     // Core State
     const [order, setOrder] = useState(null);
@@ -66,6 +68,7 @@ const OrderTracking = () => {
             };
 
             const handleSessionCompleted = () => {
+                setSessionId(null);
                 navigate('/thank-you');
             };
 
@@ -102,6 +105,7 @@ const OrderTracking = () => {
     const handleCheckout = async () => {
         try {
             await api.put(`/orders/table/${order.tableNumber}/complete`);
+            setSessionId(null);
             navigate('/thank-you');
         } catch (error) {
             console.error('Error during checkout', error);
