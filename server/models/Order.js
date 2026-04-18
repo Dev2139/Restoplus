@@ -5,7 +5,12 @@ const orderSchema = new mongoose.Schema({
     items: [{
         menuItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem', required: true },
         quantity: { type: Number, required: true },
-        notes: { type: String }
+        notes: { type: String },
+        status: {
+            type: String,
+            enum: ['Pending', 'Served'],
+            default: 'Pending'
+        }
     }],
     totalAmount: { type: Number, required: true },
     status: {

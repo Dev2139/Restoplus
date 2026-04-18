@@ -164,3 +164,36 @@ exports.completeTableSession = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc Update individual item status in an order
+// @route PUT /api/orders/:id/items/:itemId/status
+exports.updateItemStatus = async (req, res) => {
+    try {
+        const { id, itemId } = req.params;
+        const { status } = req.body;
+
+        const order = await Order.findById(id);
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const item = order.items.id(itemId);
+        if (!item) {
+            return res.status(404).json({ message: 'Item not found in order' });
+        }
+
+        item.status = status;
+        await order.save();
+
+        const updatedOrder = await Order.findById(id).populate('items.menuItem');
+
+        // Notify specifically the table and kitchen
+        const io = socketHandler.getIO();
+        io.to(`table_${order.tableNumber}`).emit('status_update', updatedOrder);
+        io.to('admin_kitchen').emit('order_updated', updatedOrder);
+
+        res.json(updatedOrder);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
