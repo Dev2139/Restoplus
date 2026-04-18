@@ -142,7 +142,7 @@ const OrderTracking = () => {
                     </div>
                 </div>
 
-                <div className="mt-8 text-center">
+                <div className="mt-8 flex flex-col gap-3">
                     {order.status === 'Served' ? (
                         <Link to="/thank-you">
                             <button className="btn-primary w-full flex items-center justify-center gap-2">
@@ -150,8 +150,14 @@ const OrderTracking = () => {
                             </button>
                         </Link>
                     ) : (
-                        <p className="text-gray-500 italic">Sit back and relax, your food is on the way!</p>
+                        <p className="text-gray-500 italic text-center mb-4">Sit back and relax, your food is on the way!</p>
                     )}
+                    
+                    <Link to={`/table/${order.tableNumber}`}>
+                        <button className="w-full py-4 border-2 border-primary/30 text-primary font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/5 transition-all">
+                            <Utensils size={20} /> ORDER MORE ITEMS
+                        </button>
+                    </Link>
                 </div>
             </div>
         </div>

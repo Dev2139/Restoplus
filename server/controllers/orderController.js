@@ -21,11 +21,14 @@ exports.createOrder = async (req, res) => {
 
         const createdOrder = await order.save();
         
+        // Populate items.menuItem before emitting to socket
+        const populatedOrder = await Order.findById(createdOrder._id).populate('items.menuItem');
+        
         // Notify kitchen/admin
         const io = socketHandler.getIO();
-        io.to('admin_kitchen').emit('new_order', createdOrder);
+        io.to('admin_kitchen').emit('new_order', populatedOrder);
 
-        res.status(201).json(createdOrder);
+        res.status(201).json(populatedOrder);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }

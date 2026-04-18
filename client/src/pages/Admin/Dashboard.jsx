@@ -4,7 +4,8 @@ import Header from '../../components/Header';
 import AdminSidebar from '../../components/AdminSidebar';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
-import { Clock, Table, CheckCircle, ChevronRight, AlertCircle, Play, Check } from 'lucide-react';
+import { Clock, Table, CheckCircle, ChevronRight, AlertCircle, Play, Check, Utensils } from 'lucide-react';
+import { UPLOAD_URL } from '../../services/api';
 import Button from '../../components/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -127,9 +128,22 @@ const Dashboard = () => {
                                             {order.items.map((item, idx) => (
                                                 <div key={idx} className="flex justify-between items-start gap-4">
                                                     <div className="flex gap-3">
-                                                        <span className="text-primary font-black">x{item.quantity}</span>
+                                                        {item.menuItem?.image ? (
+                                                            <img 
+                                                                src={`${UPLOAD_URL}${item.menuItem.image}`} 
+                                                                alt={item.menuItem.name} 
+                                                                className="w-10 h-10 object-cover rounded-lg border border-gray-700"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center border border-gray-700">
+                                                                <Utensils size={14} className="text-gray-500" />
+                                                            </div>
+                                                        )}
                                                         <div>
-                                                            <p className="font-bold text-sm leading-tight text-white">{item.menuItem?.name || 'Unknown Item'}</p>
+                                                            <p className="font-bold text-sm leading-tight text-white">
+                                                                <span className="text-primary mr-1">x{item.quantity}</span>
+                                                                {item.menuItem?.name || 'Unknown Item'}
+                                                            </p>
                                                             {item.notes && <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 italic"><AlertCircle size={10} /> {item.notes}</p>}
                                                         </div>
                                                     </div>
