@@ -69,7 +69,9 @@ exports.updateOrderStatus = async (req, res) => {
 
         if (order) {
             order.status = status;
-            // Populate before returning and emitting
+            await order.save(); // CRITICAL: Save the change to DB
+
+            // Populate before returning and emitting to ensure dish names are sent
             const updatedOrder = await Order.findById(order._id).populate('items.menuItem');
 
             // Notify specific table and admin room
@@ -81,6 +83,8 @@ exports.updateOrderStatus = async (req, res) => {
         } else {
             res.status(404).json({ message: 'Order not found' });
         }
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
 };
 

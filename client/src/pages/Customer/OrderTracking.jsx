@@ -23,31 +23,34 @@ const OrderTracking = () => {
 
     useEffect(() => {
         fetchOrder();
+    }, [orderId]);
 
+    useEffect(() => {
         if (socket) {
             socket.on('status_update', (updatedOrder) => {
                 if (updatedOrder._id === orderId) {
                     setOrder(updatedOrder);
                 }
-                // Refresh session total on any status update
-                fetchActiveOrders(updatedOrder.tableNumber);
+                // Refresh session total on any status update for this table
+                if (order && updatedOrder.tableNumber === order.tableNumber) {
+                    fetchActiveOrders(updatedOrder.tableNumber);
+                }
             });
             
             socket.on('new_order', (newOrder) => {
-                // If a new order is placed for the same table, refresh the list
+                // If a new order is placed for the same table, refresh the bill
                 if (order && newOrder.tableNumber === order.tableNumber) {
                     fetchActiveOrders(order.tableNumber);
                 }
             });
-        }
-
-        return () => {
-            if (socket) {
+            
+            // Clean up listeners
+            return () => {
                 socket.off('status_update');
                 socket.off('new_order');
-            }
-        };
-    }, [orderId, socket, order?.tableNumber]);
+            };
+        }
+    }, [socket, orderId, order?.tableNumber]);
 
     const fetchOrder = async () => {
         try {
