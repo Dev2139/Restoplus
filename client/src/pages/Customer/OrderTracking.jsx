@@ -9,7 +9,17 @@ import { motion } from 'framer-motion';
 const OrderTracking = () => {
     const { orderId } = useParams();
     const { socket, joinTable } = useSocket();
+    const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [activeOrders, setActiveOrders] = useState([]);
+
+    const statusSteps = [
+        { status: 'Pending', label: 'Order Placed', icon: Clock, color: 'text-yellow-500' },
+        { status: 'Accepted', label: 'Accepted', icon: CheckCircle2, color: 'text-blue-500' },
+        { status: 'Preparing', label: 'Preparing', icon: Utensils, color: 'text-orange-500' },
+        { status: 'Ready', label: 'Ready to Serve', icon: CheckCircle, color: 'text-green-500' },
+        { status: 'Served', label: 'Served', icon: CheckCircle, color: 'text-primary' },
+    ];
 
     useEffect(() => {
         fetchOrder();
