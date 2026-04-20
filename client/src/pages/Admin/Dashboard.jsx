@@ -138,7 +138,13 @@ const Dashboard = () => {
                                         <div className="p-4 border-b border-gray-800 flex justify-between items-start">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="bg-primary text-black text-[10px] font-black px-2 py-0.5 rounded uppercase">Table {order.tableNumber}</span>
+                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
+                                                        order.platform === 'Swiggy' ? 'bg-[#ff6b00] text-white' : 
+                                                        order.platform === 'Zomato' ? 'bg-[#e03e52] text-white' : 
+                                                        'bg-primary text-black'
+                                                    }`}>
+                                                        {order.platform || 'Local'} {order.tableNumber !== 'ONLINE' ? `• Table ${order.tableNumber}` : ''}
+                                                    </span>
                                                     <span className="text-gray-500 text-xs font-bold">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">

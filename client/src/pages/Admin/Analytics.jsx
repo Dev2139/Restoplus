@@ -5,22 +5,26 @@ import AdminSidebar from '../../components/AdminSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { 
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-    Tooltip, ResponsiveContainer, Cell, PieChart, Pie 
+    Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
-import { DollarSign, ShoppingBag, TrendingUp, Users } from 'lucide-react';
+import { DollarSign, ShoppingBag, TrendingUp, Download, RefreshCw, Layers } from 'lucide-react';
+import { exportToExcel } from '../../services/exportUtils';
 
 const Analytics = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [timeframe, setTimeframe] = useState('daily');
+    const [syncing, setSyncing] = useState(false);
     const { user } = useAuth();
 
     useEffect(() => {
         fetchAnalytics();
-    }, []);
+    }, [timeframe]);
 
     const fetchAnalytics = async () => {
+        setLoading(true);
         try {
-            const { data } = await api.get('/analytics', {
+            const { data } = await api.get(`/analytics?timeframe=${timeframe}`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
             setData(data);
@@ -31,18 +35,52 @@ const Analytics = () => {
         }
     };
 
-    if (loading) return (
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            await api.post('/analytics/sync-platform', { platform: 'Swiggy' }, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            await api.post('/analytics/sync-platform', { platform: 'Zomato' }, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            fetchAnalytics();
+        } catch (error) {
+            console.error('Sync failed', error);
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            const { data: rawOrders } = await api.get('/orders', {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            exportToExcel(rawOrders, `Restoplus_Report_${new Date().toISOString().split('T')[0]}`);
+        } catch (error) {
+            console.error('Export failed', error);
+        }
+    };
+
+    if (loading && !data) return (
         <div className="min-h-screen bg-black flex items-center justify-center">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
 
     const stats = [
-        { label: 'Total Revenue', value: `₹${data.totalRevenue || 0}`, icon: DollarSign, color: 'text-green-500' },
-        { label: 'Total Orders', value: data.totalOrders || 0, icon: ShoppingBag, color: 'text-primary' },
-        { label: 'Average Order', value: `₹${data.totalOrders > 0 ? Math.round(data.totalRevenue / data.totalOrders) : 0}`, icon: TrendingUp, color: 'text-blue-500' },
-        { label: 'Growth', value: `+${Math.floor(Math.random() * 20)}%`, icon: TrendingUp, color: 'text-purple-500' },
+        { label: 'Gross Revenue', value: `₹${data?.totalRevenue || 0}`, icon: DollarSign, color: 'text-green-500' },
+        { label: 'Net Revenue', value: `₹${data?.netRevenue || 0}`, icon: TrendingUp, color: 'text-primary' },
+        { label: 'Total Orders', value: data?.totalOrders || 0, icon: ShoppingBag, color: 'text-blue-500' },
+        { label: 'Platforms', value: '3 Active', icon: Layers, color: 'text-purple-500' },
     ];
+
+    const pieData = [
+        { name: 'Local', value: data?.platformBreakdown?.Local?.revenue || 0, color: '#facc15' },
+        { name: 'Swiggy', value: data?.platformBreakdown?.Swiggy?.revenue || 0, color: '#ff6b00' },
+        { name: 'Zomato', value: data?.platformBreakdown?.Zomato?.revenue || 0, color: '#e03e52' },
+    ].filter(item => item.value > 0);
 
     return (
         <div className="min-h-screen bg-black">
@@ -50,9 +88,39 @@ const Analytics = () => {
             <div className="flex">
                 <AdminSidebar />
                 <main className="flex-grow p-6">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-black uppercase italic tracking-tighter">Sales <span className="text-primary not-italic">Analytics</span></h1>
-                        <p className="text-gray-500 font-bold">Monitor your restaurant performance</p>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h1 className="text-3xl font-black uppercase italic tracking-tighter">Business <span className="text-primary not-italic">Analytics</span></h1>
+                            <p className="text-gray-500 font-bold">Track Swiggy, Zomato & Table orders</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 bg-gray-900 p-1.5 rounded-2xl border border-gray-800">
+                            {['daily', 'monthly', 'yearly'].map((tf) => (
+                                <button
+                                    key={tf}
+                                    onClick={() => setTimeframe(tf)}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${
+                                        timeframe === tf ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    {tf}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={handleSync}
+                                disabled={syncing}
+                                className="btn-secondary flex items-center gap-2 group"
+                            >
+                                <RefreshCw size={18} className={syncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+                                {syncing ? 'Syncing...' : 'Sync Platforms'}
+                            </button>
+                            <button onClick={handleExport} className="btn-primary flex items-center gap-2">
+                                <Download size={18} /> Export Excel
+                            </button>
+                        </div>
                     </div>
 
                     {/* Stats Grid */}
@@ -70,15 +138,15 @@ const Analytics = () => {
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                         {/* Daily Sales Chart */}
-                        <div className="card p-6">
+                        <div className="lg:col-span-2 card p-6">
                             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                <TrendingUp className="text-primary" size={20} /> Daily Revenue
+                                <TrendingUp className="text-primary" size={20} /> Revenue Trend
                             </h3>
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={data.dailySales || []}>
+                                    <LineChart data={data?.dailySales || []}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
                                         <XAxis dataKey="_id" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
                                         <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
@@ -99,6 +167,36 @@ const Analytics = () => {
                             </div>
                         </div>
 
+                        {/* Platform Distribution */}
+                        <div className="card p-6">
+                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                <Layers className="text-primary" size={20} /> Platform Mix
+                            </h3>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36}/>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Popular Items Chart */}
                         <div className="card p-6">
                             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -106,7 +204,7 @@ const Analytics = () => {
                             </h3>
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={data.popularItems || []} layout="vertical">
+                                    <BarChart data={data?.popularItems || []} layout="vertical">
                                         <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
                                         <XAxis type="number" hide />
                                         <YAxis 
@@ -123,12 +221,36 @@ const Analytics = () => {
                                             contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px' }}
                                         />
                                         <Bar dataKey="count" fill="#facc15" radius={[0, 4, 4, 0]}>
-                                            {(data.popularItems || []).map((entry, index) => (
+                                            {(data?.popularItems || []).map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fillOpacity={1 - index * 0.15} />
                                             ))}
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Recent Online Orders (Quick View) */}
+                        <div className="card p-6 overflow-hidden">
+                            <h3 className="text-xl font-bold mb-6">Recent Online Payouts</h3>
+                            <div className="space-y-4">
+                                {pieData.map((plat) => (
+                                    <div key={plat.name} className="flex items-center justify-between p-4 bg-gray-900 rounded-2xl border border-gray-800">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-black" style={{ backgroundColor: plat.color }}>
+                                                {plat.name[0]}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold">{plat.name} Payouts</p>
+                                                <p className="text-xs text-gray-500">Net after commissions</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-black text-white">₹{data?.platformBreakdown?.[plat.name]?.revenue || 0}</p>
+                                            <p className="text-[10px] text-primary uppercase font-bold tracking-widest">{data?.platformBreakdown?.[plat.name]?.count || 0} orders</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
