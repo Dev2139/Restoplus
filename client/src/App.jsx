@@ -16,7 +16,6 @@ import Dashboard from './pages/Admin/Dashboard';
 import MenuManagement from './pages/Admin/MenuManagement';
 import TableManagement from './pages/Admin/TableManagement';
 import Analytics from './pages/Admin/Analytics';
-import Integrations from './pages/Admin/Integrations';
 
 const PrivateRoute = ({ children }) => {
     const { user } = useAuth();
@@ -49,7 +48,6 @@ function App() {
                 <Route path="/admin/menu" element={<PrivateRoute><MenuManagement /></PrivateRoute>} />
                 <Route path="/admin/tables" element={<PrivateRoute><TableManagement /></PrivateRoute>} />
                 <Route path="/admin/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
-                <Route path="/admin/integrations" element={<PrivateRoute><Integrations /></PrivateRoute>} />
               </Routes>
             </div>
           </CartProvider>
