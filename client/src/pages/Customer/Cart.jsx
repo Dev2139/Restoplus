@@ -83,7 +83,7 @@ const Cart = () => {
                             className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 flex gap-4"
                         >
                             <img 
-                                src={item.image ? `${UPLOAD_URL}${item.image}` : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200'} 
+                                src={item.image ? (item.image.startsWith('http') ? item.image : `${UPLOAD_URL}${item.image}`) : 'https://images.unsplash.com/photo-1626779816240-fc866164d1f2?auto=format&fit=crop&q=80&w=200'} 
                                 alt={item.name}
                                 className="w-20 h-20 object-cover rounded-xl"
                             />

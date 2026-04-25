@@ -131,7 +131,7 @@ const MenuManagement = () => {
                             <div key={item._id} className="card group">
                                 <div className="h-40 relative">
                                     <img 
-                                        src={item.image ? `${UPLOAD_URL}${item.image}` : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300'} 
+                                        src={item.image ? (item.image.startsWith('http') ? item.image : `${UPLOAD_URL}${item.image}`) : 'https://images.unsplash.com/photo-1626779816240-fc866164d1f2?auto=format&fit=crop&q=80&w=300'} 
                                         alt={item.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     />

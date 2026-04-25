@@ -112,13 +112,13 @@ const Menu = () => {
 
                 {/* Menu Items Grid */}
                 {loading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-6 bg-white sm:bg-transparent rounded-2xl sm:rounded-none overflow-hidden">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="card h-80 animate-pulse bg-gray-900"></div>
+                            <div key={i} className="card sm:card h-28 sm:h-80 animate-pulse bg-gray-100 sm:bg-gray-900 border-b sm:border-none border-gray-200"></div>
                         ))}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-6 bg-white sm:bg-transparent rounded-2xl sm:rounded-none overflow-hidden">
                         <AnimatePresence>
                             {filteredItems.map(item => (
                                 <motion.div
@@ -128,6 +128,7 @@ const Menu = () => {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     transition={{ duration: 0.2 }}
+                                    className="border-b border-gray-100 sm:border-none last:border-b-0"
                                 >
                                     <MenuItemCard 
                                         item={item} 
