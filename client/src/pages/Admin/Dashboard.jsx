@@ -167,7 +167,7 @@ const Dashboard = () => {
                                                     <div className="flex gap-3 items-center">
                                                         {item.menuItem?.image ? (
                                                             <img 
-                                                                src={`${UPLOAD_URL}${item.menuItem.image}`} 
+                                                                src={item.menuItem.image.startsWith('http') ? item.menuItem.image : `${UPLOAD_URL}${item.menuItem.image}`} 
                                                                 alt={item.menuItem.name} 
                                                                 className="w-10 h-10 object-cover rounded-lg border border-gray-700"
                                                             />
