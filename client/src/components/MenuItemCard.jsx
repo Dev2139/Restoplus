@@ -3,9 +3,12 @@ import { Plus, Minus, Info, Leaf } from 'lucide-react';
 import Button from './Button';
 import { UPLOAD_URL } from '../services/api';
 
-const MenuItemCard = ({ item, onAdd, onRemove, quantity = 0 }) => {
+const MenuItemCard = ({ item, onAdd, onRemove, quantity = 0, onClick }) => {
     return (
-        <div className="flex flex-row sm:flex-col h-full bg-transparent sm:bg-gray-900 sm:border sm:border-gray-800 sm:rounded-xl overflow-hidden sm:transition-all sm:hover:border-primary/50 p-3 sm:p-0">
+        <div 
+            className="flex flex-row sm:flex-col h-full bg-transparent sm:bg-gray-900 sm:border sm:border-gray-800 sm:rounded-xl overflow-hidden sm:transition-all sm:hover:border-primary/50 p-3 sm:p-0 cursor-pointer"
+            onClick={() => onClick && onClick(item)}
+        >
             {/* Image Container */}
             <div className="relative w-24 h-24 sm:h-48 sm:w-full flex-shrink-0 overflow-hidden rounded-xl sm:rounded-none">
                 <img 
@@ -42,14 +45,14 @@ const MenuItemCard = ({ item, onAdd, onRemove, quantity = 0 }) => {
                     {quantity > 0 ? (
                         <div className="flex items-center justify-between border sm:border-2 border-[#ea580c] sm:border-primary rounded-lg p-1 bg-[#ea580c]/10 sm:bg-primary/10">
                             <button 
-                                onClick={() => onRemove(item._id)}
+                                onClick={(e) => { e.stopPropagation(); onRemove(item._id); }}
                                 className="p-1 sm:p-2 hover:bg-[#ea580c]/20 sm:hover:bg-primary/20 rounded-md transition-colors"
                             >
                                 <Minus className="w-4 h-4 sm:w-5 sm:h-5 text-[#ea580c] sm:text-primary" />
                             </button>
                             <span className="text-base sm:text-xl font-bold text-[#ea580c] sm:text-white px-2 sm:px-4">{quantity}</span>
                             <button 
-                                onClick={() => onAdd(item)}
+                                onClick={(e) => { e.stopPropagation(); onAdd(item); }}
                                 className="p-1 sm:p-2 hover:bg-[#ea580c]/20 sm:hover:bg-primary/20 rounded-md transition-colors"
                             >
                                 <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-[#ea580c] sm:text-primary" />
@@ -58,7 +61,7 @@ const MenuItemCard = ({ item, onAdd, onRemove, quantity = 0 }) => {
                     ) : (
                         <button 
                             className="bg-[#ea580c] sm:bg-primary sm:w-full text-white sm:text-black px-6 py-1.5 sm:py-2.5 rounded-full sm:rounded-lg font-bold text-sm sm:text-base uppercase sm:tracking-tighter shadow-sm sm:shadow-none transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
-                            onClick={() => onAdd(item)}
+                            onClick={(e) => { e.stopPropagation(); onAdd(item); }}
                             disabled={!item.isAvailable}
                         >
                             ADD
