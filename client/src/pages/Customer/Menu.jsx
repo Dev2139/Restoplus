@@ -10,16 +10,17 @@ import { UPLOAD_URL } from '../../services/api';
 
 const Menu = () => {
     const { tableNumber: tableParam } = useParams();
-    const { setTableNumber, addToCart, removeFromCart, updateQuantity, cartItems, cartTotal, cartCount, setSessionId } = useCart();
+    const { setTableNumber, addToCart, removeFromCart, updateQuantity, cartItems, cartTotal, cartCount, setSessionId, customerName, customerPhone, saveCustomerDetails } = useCart();
     const [menuItems, setMenuItems] = useState([]);
+    const [showGate, setShowGate] = useState(!customerName || !customerPhone);
     const [filteredItems, setFilteredItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [activeCategory, setActiveCategory] = useState('All');
+    const [activeCategory, setActiveCategory] = useState('બધા');
     const [vegOnly, setVegOnly] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
-    const categories = ['All', ...new Set(menuItems.map(item => item.category))];
+    const categories = ['બધા', ...new Set(menuItems.map(item => item.category))];
 
     useEffect(() => {
         if (tableParam) {
@@ -40,7 +41,7 @@ const Menu = () => {
 
     useEffect(() => {
         let result = menuItems;
-        if (activeCategory !== 'All') {
+        if (activeCategory !== 'બધા') {
             result = result.filter(item => item.category === activeCategory);
         }
         if (vegOnly) {
@@ -71,12 +72,63 @@ const Menu = () => {
 
     return (
         <div className="pb-24">
+            {showGate && (
+                <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center p-4">
+                    <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.15),transparent_50%)]"></div>
+                    <div className="w-full max-w-md bg-zinc-900 border border-orange-500/20 p-8 rounded-3xl shadow-2xl space-y-6">
+                        <div className="text-center space-y-2">
+                            <h2 className="text-3xl font-black text-orange-500">Welcome to <span className="text-white">RestoPlus</span></h2>
+                            <p className="text-gray-400 text-sm">Please enter your details to view the menu.</p>
+                        </div>
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const name = e.target.name.value.trim();
+                            const phone = e.target.phone.value.trim();
+                            if (!name || !phone) return alert('Please fill in all fields.');
+                            if (phone.length < 10) return alert('Please enter a valid 10-digit mobile number.');
+                            saveCustomerDetails(name, phone);
+                            setShowGate(false);
+                        }} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Your Name</label>
+                                <input 
+                                    type="text" 
+                                    name="name" 
+                                    required 
+                                    defaultValue={customerName}
+                                    className="w-full bg-black border border-gray-800 rounded-xl py-3 px-4 focus:outline-none focus:border-orange-500 transition-colors text-white"
+                                    placeholder="John Doe"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Mobile Number</label>
+                                <input 
+                                    type="tel" 
+                                    name="phone" 
+                                    required 
+                                    defaultValue={customerPhone}
+                                    pattern="[0-9]{10}"
+                                    title="Please enter a 10-digit mobile number"
+                                    className="w-full bg-black border border-gray-800 rounded-xl py-3 px-4 focus:outline-none focus:border-orange-500 transition-colors text-white"
+                                    placeholder="9876543210"
+                                />
+                            </div>
+                            <button 
+                                type="submit" 
+                                className="w-full bg-orange-500 hover:bg-orange-600 text-black font-bold py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-orange-500/20"
+                            >
+                                Open Menu
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
             <Header />
             
             <div className="px-4 pt-6 space-y-6">
                 <div>
-                    <h1 className="text-3xl font-black mb-1">Welcome to <span className="text-primary italic">RESTOPLUS</span></h1>
-                    <p className="text-gray-400">Discover our delicious menu items</p>
+                    <h1 className="text-3xl font-black mb-1"><span className="text-primary italic">RESTOPLUS</span> માં આપનું સ્વાગત છે</h1>
+                    <p className="text-gray-400">અમારી સ્વાદિષ્ટ વાનગીઓ માણો</p>
                 </div>
 
                 {/* Search and Filter */}
@@ -85,7 +137,7 @@ const Menu = () => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                         <input 
                             type="text" 
-                            placeholder="Search dishes..."
+                            placeholder="વાનગીઓ શોધો..."
                             className="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:border-primary transition-colors text-white"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -97,7 +149,7 @@ const Menu = () => {
                             onClick={() => setVegOnly(!vegOnly)}
                             className={`flex-shrink-0 px-4 py-2 rounded-full border-2 transition-all font-bold text-sm ${vegOnly ? 'bg-green-600/20 border-green-600 text-green-500' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
                         >
-                            Veg Only
+                            ફક્ત શાકાહારી
                         </button>
                         <div className="w-[2px] h-6 bg-gray-800 flex-shrink-0"></div>
                         {categories.map(cat => (
@@ -147,7 +199,7 @@ const Menu = () => {
                 
                 {!loading && filteredItems.length === 0 && (
                     <div className="text-center py-20">
-                        <p className="text-gray-500 text-xl">No items found matching your filters.</p>
+                        <p className="text-gray-500 text-xl">તમારા ફિલ્ટર મુજબ કોઈ વાનગી મળી નથી.</p>
                     </div>
                 )}
             </div>
@@ -170,13 +222,13 @@ const Menu = () => {
                                     {cartCount}
                                 </div>
                                 <div className="text-black">
-                                    <p className="text-xs font-bold uppercase opacity-70">Proceed to View</p>
-                                    <p className="text-lg font-black tracking-tight">VIEW CART</p>
+                                    <p className="text-xs font-bold uppercase opacity-70">આગળ વધો</p>
+                                    <p className="text-lg font-black tracking-tight">કાર્ટ જુઓ</p>
                                 </div>
                             </div>
                             <div className="text-black text-right flex items-center gap-3">
                                 <div>
-                                    <p className="text-xs font-bold uppercase opacity-70">Total</p>
+                                    <p className="text-xs font-bold uppercase opacity-70">કુલ</p>
                                     <p className="text-lg font-black tracking-tight">₹{cartTotal}</p>
                                 </div>
                                 <ArrowRight className="w-6 h-6" />
@@ -230,7 +282,7 @@ const Menu = () => {
                                 </div>
                                 
                                 <p className="text-gray-600 sm:text-gray-400 text-base leading-relaxed mb-6">
-                                    {selectedItem.description || 'No detailed description available for this item.'}
+                                    {selectedItem.description || 'આ વાનગી માટે કોઈ વિગતો ઉપલબ્ધ નથી.'}
                                 </p>
                                 
                                 <div className="mt-auto pt-4 border-t border-gray-100 sm:border-gray-800">
@@ -256,7 +308,7 @@ const Menu = () => {
                                             onClick={() => addToCart(selectedItem)}
                                             disabled={!selectedItem.isAvailable}
                                         >
-                                            {selectedItem.isAvailable ? 'Add to Cart' : 'Currently Unavailable'}
+                                            {selectedItem.isAvailable ? 'કાર્ટમાં ઉમેરો' : 'હાલમાં અપ્રાપ્ય'}
                                         </button>
                                     )}
                                 </div>

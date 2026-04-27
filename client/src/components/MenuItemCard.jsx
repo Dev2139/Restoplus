@@ -18,7 +18,7 @@ const MenuItemCard = ({ item, onAdd, onRemove, quantity = 0, onClick }) => {
                 />
                 {!item.isAvailable && (
                     <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                        <span className="text-white font-bold text-[10px] sm:text-lg uppercase tracking-widest">Unavailable</span>
+                        <span className="text-white font-bold text-[10px] sm:text-lg uppercase tracking-widest">અપ્રાપ્ય</span>
                     </div>
                 )}
                 {item.isVeg && (
@@ -64,7 +64,7 @@ const MenuItemCard = ({ item, onAdd, onRemove, quantity = 0, onClick }) => {
                             onClick={(e) => { e.stopPropagation(); onAdd(item); }}
                             disabled={!item.isAvailable}
                         >
-                            ADD
+                            ઉમેરો
                         </button>
                     )}
                 </div>

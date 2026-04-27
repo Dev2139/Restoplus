@@ -1,6 +1,6 @@
-import React from 'react';
-import { ShoppingCart, LogOut, LayoutDashboard, UtensilsCrossed } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { ShoppingCart, LogOut, LayoutDashboard, UtensilsCrossed, Menu, X, Utensils, QrCode, BarChart3 } from 'lucide-react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,6 +8,14 @@ const Header = ({ isAdmin = false }) => {
     const { cartCount, tableNumber } = useCart();
     const { user, logout } = useAuth();
     const location = useLocation();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    const navItems = [
+        { name: 'Live Orders', icon: LayoutDashboard, path: '/admin' },
+        { name: 'Menu Mgmt', icon: Utensils, path: '/admin/menu' },
+        { name: 'Table & QR', icon: QrCode, path: '/admin/tables' },
+        { name: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
+    ];
 
     if (isAdmin) {
         return (
@@ -20,12 +28,55 @@ const Header = ({ isAdmin = false }) => {
                     <span className="text-gray-400 hidden sm:inline">Welcome, <span className="text-white font-bold">{user?.username}</span></span>
                     <button 
                         onClick={logout}
-                        className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors font-bold"
+                        className="hidden md:flex items-center gap-2 text-gray-400 hover:text-primary transition-colors font-bold"
                     >
                         <LogOut size={20} />
                         Logout
                     </button>
+                    <button 
+                        onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                        className="md:hidden text-gray-400 hover:text-primary transition-colors"
+                    >
+                        {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
                 </div>
+
+                {isMenuOpen && (
+                    <div className="absolute top-[72px] left-0 right-0 bg-gray-900 border-b border-gray-800 p-4 flex flex-col gap-4 md:hidden z-50">
+                        <nav className="flex flex-col gap-2">
+                            {navItems.map((item) => (
+                                <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    onClick={() => setIsMenuOpen(false)}
+                                    end
+                                    className={({ isActive }) => `
+                                        flex items-center gap-3 p-3 rounded-xl transition-all
+                                        ${isActive 
+                                            ? 'bg-primary text-black font-bold shadow-[0_4px_15px_rgba(250,204,21,0.2)]' 
+                                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                        }
+                                    `}
+                                >
+                                    <item.icon size={20} />
+                                    <span>{item.name}</span>
+                                </NavLink>
+                            ))}
+                        </nav>
+                        <div className="border-t border-gray-800 pt-4">
+                            <button 
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    logout();
+                                }}
+                                className="flex items-center gap-3 p-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white w-full text-left font-bold transition-all"
+                            >
+                                <LogOut size={20} />
+                                <span>Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
             </header>
         );
     }

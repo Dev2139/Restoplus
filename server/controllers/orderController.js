@@ -5,7 +5,7 @@ const socketHandler = require('../socket/socketHandler');
 // @route POST /api/orders
 exports.createOrder = async (req, res) => {
     try {
-        const { tableNumber, items, totalAmount, notes, sessionId } = req.body;
+        const { tableNumber, items, totalAmount, notes, sessionId, customerName, customerPhone } = req.body;
 
         if (!items || items.length === 0) {
             res.status(400).json({ message: 'No order items' });
@@ -32,6 +32,8 @@ exports.createOrder = async (req, res) => {
             order.items.push(...items);
             order.totalAmount += totalAmount;
             if (notes) order.notes = order.notes ? `${order.notes} | New: ${notes}` : notes;
+            if (customerName) order.customerName = customerName;
+            if (customerPhone) order.customerPhone = customerPhone;
             
             await order.save();
             const populatedOrder = await Order.findById(order._id).populate('items.menuItem');
@@ -50,7 +52,9 @@ exports.createOrder = async (req, res) => {
             items,
             totalAmount,
             notes,
-            sessionId // Track which session placed this
+            sessionId,
+            customerName,
+            customerPhone
         });
 
         const createdOrder = await order.save();

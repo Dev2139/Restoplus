@@ -19,7 +19,9 @@ const orderSchema = new mongoose.Schema({
         default: 'Pending'
     },
     notes: { type: String },
-    sessionId: { type: String }
+    sessionId: { type: String },
+    customerName: { type: String },
+    customerPhone: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

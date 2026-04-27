@@ -6,6 +6,15 @@ export const CartProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState([]);
     const [tableNumber, setTableNumber] = useState(null);
     const [sessionId, setSessionId] = useState(localStorage.getItem('restoplus_session_id'));
+    const [customerName, setCustomerName] = useState(localStorage.getItem('customer_name') || '');
+    const [customerPhone, setCustomerPhone] = useState(localStorage.getItem('customer_phone') || '');
+
+    const saveCustomerDetails = (name, phone) => {
+        setCustomerName(name);
+        setCustomerPhone(phone);
+        localStorage.setItem('customer_name', name);
+        localStorage.setItem('customer_phone', phone);
+    };
 
     const addToCart = (item, quantity = 1, notes = '') => {
         setCartItems(prev => {
@@ -54,7 +63,10 @@ export const CartProvider = ({ children }) => {
             tableNumber,
             setTableNumber,
             sessionId,
-            setSessionId: saveSession
+            setSessionId: saveSession,
+            customerName,
+            customerPhone,
+            saveCustomerDetails
         }}>
             {children}
         </CartContext.Provider>

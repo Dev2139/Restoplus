@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const { cartItems, cartTotal, removeFromCart, updateQuantity, tableNumber, clearCart, sessionId } = useCart();
+    const { cartItems, cartTotal, removeFromCart, updateQuantity, tableNumber, clearCart, sessionId, customerName, customerPhone } = useCart();
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -26,7 +26,9 @@ const Cart = () => {
                     notes: item.notes || ''
                 })),
                 totalAmount: cartTotal,
-                notes
+                notes,
+                customerName,
+                customerPhone
             };
 
             const { data } = await api.post('/orders', orderData);

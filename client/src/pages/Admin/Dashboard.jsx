@@ -141,6 +141,11 @@ const Dashboard = () => {
                                                     <span className="bg-primary text-black text-[10px] font-black px-2 py-0.5 rounded uppercase">Table {order.tableNumber}</span>
                                                     <span className="text-gray-500 text-xs font-bold">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
+                                                {order.customerName && (
+                                                    <div className="text-xs text-gray-400 font-bold mt-1">
+                                                        Customer: <span className="text-primary">{order.customerName}</span> ({order.customerPhone})
+                                                    </div>
+                                                )}
                                                 <div className="flex items-center gap-3">
                                                     <h3 className="font-black text-lg">Order #{order._id.slice(-6).toUpperCase()}</h3>
                                                     {order.items.some(i => i.status === 'Pending') && (
@@ -210,6 +215,11 @@ const Dashboard = () => {
                                                     <p className="text-xs text-gray-300 italic">{order.notes}</p>
                                                 </div>
                                             )}
+                                        </div>
+
+                                        <div className="px-4 py-3 border-t border-gray-800/50 flex justify-between items-center text-sm font-bold">
+                                            <span className="text-gray-400">Bill Value:</span>
+                                            <span className="text-primary text-base">₹{order.totalAmount} <span className="text-xs text-gray-500">(Grand: ₹{Math.round(order.totalAmount * 1.05)})</span></span>
                                         </div>
 
                                         <div className="p-4 border-t border-gray-800 bg-gray-900/30 grid grid-cols-2 gap-3">

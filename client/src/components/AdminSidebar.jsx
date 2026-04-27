@@ -5,6 +5,7 @@ import {
     Utensils, 
     QrCode, 
     BarChart3, 
+    Users,
     ChevronRight 
 } from 'lucide-react';
 
@@ -13,6 +14,7 @@ const AdminSidebar = () => {
         { name: 'Live Orders', icon: LayoutDashboard, path: '/admin' },
         { name: 'Menu Mgmt', icon: Utensils, path: '/admin/menu' },
         { name: 'Table & QR', icon: QrCode, path: '/admin/tables' },
+        { name: 'Customers', icon: Users, path: '/admin/customers' },
         { name: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
     ];
 
