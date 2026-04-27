@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, LogOut, LayoutDashboard, UtensilsCrossed, Menu, X, Utensils, QrCode, BarChart3 } from 'lucide-react';
+import { ShoppingCart, LogOut, LayoutDashboard, UtensilsCrossed, Menu, X, Utensils, QrCode, BarChart3, Users } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ const Header = ({ isAdmin = false }) => {
         { name: 'Live Orders', icon: LayoutDashboard, path: '/admin' },
         { name: 'Menu Mgmt', icon: Utensils, path: '/admin/menu' },
         { name: 'Table & QR', icon: QrCode, path: '/admin/tables' },
+        { name: 'Customers', icon: Users, path: '/admin/customers' },
         { name: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
     ];
 
